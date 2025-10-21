@@ -192,7 +192,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               <div>
                 <Label className="text-sm font-medium">{t('version')}</Label>
                 <div className="text-sm text-muted-foreground mt-1">
-                  SpryChat v1.0.1
+                  SpryChat v1.0.2
                 </div>
               </div>
               

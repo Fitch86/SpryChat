@@ -26,13 +26,16 @@ export const AssistantInner = ({ currentConversation, updateConversationTitle, o
     if (prevConversation && prevConversation.id !== currentConversation?.id) {
       const messagesToSave = prevMessages?.filter((m) => m.role === 'user' || m.role === 'assistant');
       if (messagesToSave && messagesToSave.length > 0) {
-        const convertedMessages: Message[] = messagesToSave.map((m: ThreadMessage) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content.map(c => c.type === 'text' ? c.text : '').join(''),
-          createdAt: m.createdAt,
-        }));
-        console.log(`Saving previous conversation: ${prevConversation.id} with ${messagesToSave.length} messages`);
+        const convertedMessages: Message[] = messagesToSave
+          .map((m: ThreadMessage) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content.map(c => c.type === 'text' ? c.text : '').join(''),
+            createdAt: m.createdAt,
+          }))
+          // Filter out assistant messages with empty content to prevent API errors
+          .filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content.trim() !== ''));
+        console.log(`Saving previous conversation: ${prevConversation.id} with ${convertedMessages.length} messages`);
         updateConversationMessages(prevConversation.id, convertedMessages);
       }
     }
@@ -50,7 +53,9 @@ export const AssistantInner = ({ currentConversation, updateConversationTitle, o
           role: m.role,
           content: m.content.map(c => c.type === 'text' ? c.text : '').join(''),
           createdAt: m.createdAt,
-        }));
+        }))
+        // Filter out assistant messages with empty content to prevent API errors
+        .filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content.trim() !== ''));
       localStorage.setItem(THREAD_CACHE_PREFIX + currentConversation.id, JSON.stringify(serialized));
     } catch (e) {
       console.warn('Failed to cache thread messages', e);
@@ -107,7 +112,9 @@ export const AssistantInner = ({ currentConversation, updateConversationTitle, o
             role: m.role,
             content: m.content.map(c => c.type === 'text' ? c.text : '').join(''),
             createdAt: m.createdAt,
-          }));
+          }))
+          // Filter out assistant messages with empty content to prevent API errors
+          .filter((m) => m.role === 'user' || (m.role === 'assistant' && m.content.trim() !== ''));
         updateConversationMessages(currentConversation.id, serialized as any);
         // 同步写入缓存，保持一致
         localStorage.setItem(THREAD_CACHE_PREFIX + currentConversation.id, JSON.stringify(serialized));

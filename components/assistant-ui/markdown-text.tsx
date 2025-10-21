@@ -13,6 +13,7 @@ import { FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { MarkdownImage } from "@/components/assistant-ui/markdown-image";
 import { cn } from "@/lib/utils";
 
 const MarkdownTextImpl = () => {
@@ -115,6 +116,14 @@ const defaultComponents = memoizeMarkdownComponents({
   ),
   sup: ({ className, ...props }) => (
     <sup className={cn("[&>a]:text-xs [&>a]:no-underline", className)} {...props} />
+  ),
+  img: ({ className, alt, src, ...props }) => (
+    <MarkdownImage 
+      src={src as string}
+      alt={alt}
+      className={className}
+      {...props} 
+    />
   ),
   pre: ({ className, ...props }) => (
     <pre className={cn("overflow-x-auto rounded-b-lg bg-black p-4 text-white", className)} {...props} />

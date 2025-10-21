@@ -49,15 +49,21 @@ function AssistantBody() {
   // Resolve initial messages for current conversation (saved first, then cache fallback)
   const initialMessagesResolved = useMemo(() => {
     if (!currentConversation) return [] as any[];
-    const saved = (currentConversation.messages || []).filter((m: any) => m.role !== 'data');
-    if (saved.length > 0) return saved.filter((m: any) => m.role === 'user' || m.role === 'assistant');
+    const saved = (currentConversation.messages || [])
+      .filter((m: any) => m.role !== 'data')
+      // Filter out assistant messages with empty content to prevent API errors
+      .filter((m: any) => m.role === 'user' || (m.role === 'assistant' && m.content?.trim()));
+    if (saved.length > 0) return saved;
     if (typeof window === 'undefined') return saved as any[];
     try {
       const cachedStr = localStorage.getItem('sprychat-thread-cache-' + currentConversation.id);
       if (cachedStr) {
         const parsed = JSON.parse(cachedStr);
         if (Array.isArray(parsed)) {
-          return parsed.filter((m: any) => m.role === 'user' || m.role === 'assistant');
+          return parsed
+            .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+            // Filter out assistant messages with empty content to prevent API errors
+            .filter((m: any) => m.role === 'user' || (m.role === 'assistant' && m.content?.trim()));
         }
       }
     } catch {}
@@ -99,8 +105,9 @@ function AssistantBody() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+      <SidebarInset className="flex flex-col">
+        {/* 固定在顶部的 header */}
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-background border-b transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -110,7 +117,8 @@ function AssistantBody() {
             <SettingsDialog />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        {/* 内容区域 - Thread 组件内部有自己的滚动 */}
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0 min-h-0">
           {isLoaded && currentConversation ? (
             <RuntimeSection
               key={currentConversation.id}

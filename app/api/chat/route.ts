@@ -95,7 +95,89 @@ export async function POST(req: Request) {
   }
 
   try {
-    // 对于非聊天模型，返回不支持的错误信息
+    // 对于图像模型，自动调用图像生成 API
+    if (modelInfo.category === 'images') {
+      console.log('🎨 Image model detected, generating image...');
+      
+      // 获取最后一条用户消息作为 prompt
+      const lastUserMessage = messages.filter((m: any) => m.role === 'user').pop();
+      const prompt = typeof lastUserMessage?.content === 'string' 
+        ? lastUserMessage.content 
+        : lastUserMessage?.content?.[0]?.text || '';
+
+      if (!prompt) {
+        return new Response(
+          JSON.stringify({ error: '请提供图像描述' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        // 调用图像生成 API
+        const imageResponse = await fetch(`${finalBaseURL}${modelInfo.endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${finalApiKey}`,
+          },
+          body: JSON.stringify({
+            model: finalModel,
+            prompt,
+            n: 1,
+            size: '1024x1024',
+          }),
+        });
+
+        if (!imageResponse.ok) {
+          const errorData = await imageResponse.json().catch(() => ({}));
+          console.error('Image generation error:', errorData);
+          throw new Error(errorData.error?.message || '图像生成失败');
+        }
+
+        const imageResult = await imageResponse.json();
+        const imageUrl = imageResult.data?.[0]?.url;
+
+        if (!imageUrl) {
+          throw new Error('未能获取图像URL');
+        }
+
+        console.log('✅ Image generated:', imageUrl);
+
+        // 构造包含图像的消息
+        const imageMessage = `我已经为您生成了图像：\n\n![Generated Image](${imageUrl})`;
+
+        // 创建符合 AI SDK 格式的流式响应
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            // 发送文本块（AI SDK 数据流格式）
+            for (const char of imageMessage) {
+              // 格式: 0:"字符"\n
+              const chunk = `0:${JSON.stringify(char)}\n`;
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          }
+        });
+
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Vercel-AI-Data-Stream': 'v1',
+          },
+        });
+      } catch (imageError: any) {
+        console.error('Image generation failed:', imageError);
+        return new Response(
+          JSON.stringify({ 
+            error: imageError.message || '图像生成失败，请检查模型和 API 配置' 
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 对于其他非聊天模型，返回不支持的错误信息
     if (modelInfo.category !== 'chat') {
       return new Response(
         JSON.stringify({ 
